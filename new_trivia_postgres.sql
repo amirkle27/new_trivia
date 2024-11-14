@@ -138,8 +138,8 @@ language plpgsql AS
     end;
 
 $$;
-ALTER TABLE player_answers
-DROP CONSTRAINT player_answers_question_id_fkey;
+-- ALTER TABLE player_answers
+-- DROP CONSTRAINT player_answers_question_id_fkey;
 
 drop procedure update_high_score_table_start_time;
 
@@ -336,11 +336,9 @@ begin
 end;
     $$;
 
-SELECT * FROM most_least_answered_questions()
+SELECT * FROM most_least_answered_questions();
 
-SELECT proname
-FROM pg_proc
-WHERE proname = 'most_least_answered_questions';
+
 
 
 
@@ -370,8 +368,89 @@ BEGIN
 END;
 $$;
 
+drop function correct_answers_by_player;
 
-select * from most_least_answered_questions()
+CREATE OR REPLACE FUNCTION correct_answers_by_player(
+    IN p_player_id INTEGER
+)
+
+RETURNS TABLE (
+                player_id INTEGER,
+                player_name VARCHAR(50),
+                question_id INTEGER,
+                total_correct_answers INTEGER
+              )
+language plpgsql AS
+    $$
+    begin
+        RETURN QUERY
+            SELECT
+                p.player_id,
+                p.username AS player_name,
+                pa.question_id,
+                (SELECT COUNT(*)::INTEGER
+                FROM player_answers pa_inner
+                WHERE pa_inner.player_id = p_player_id
+                AND pa_inner.is_correct = TRUE) AS total_correct_answers
+            FROM players p
+            JOIN player_answers pa
+            ON p.player_id = pa.player_id
+            WHERE pa.is_correct = TRUE
+            AND pa.player_id = p_player_id;
+        end;
+            $$;
+
+
+drop function players_list_by_correct_answers;
+
+CREATE OR REPLACE FUNCTION players_list_by_correct_answers()
+RETURNS TABLE (
+                player_id INTEGER,
+                player_name VARCHAR(50),
+                total_correct_answers INTEGER
+              )
+language plpgsql AS
+    $$
+    begin
+        RETURN QUERY
+            SELECT
+                p.player_id,
+                p.username AS player_name,
+                COUNT(pa.question_id)::INTEGER AS total_correct_answers
+            FROM players p
+            JOIN player_answers pa
+            ON p.player_id = pa.player_id
+            WHERE pa.is_correct = TRUE
+            GROUP BY p.player_id
+            ORDER BY total_correct_answers DESC;
+        end;
+            $$;
+
+drop function show_questions_for_player;
+
+CREATE OR REPLACE FUNCTION show_questions_for_player(
+    IN p_player_id INTEGER
+                )
+RETURNS TABLE
+            (player_id INTEGER,
+             player_name VARCHAR(50),
+             question_id INTEGER,
+             is_correct BOOLEAN)
+language plpgsql AS
+    $$
+    begin
+        RETURN QUERY
+                SELECT p.player_id,
+                       p.username AS player_name,
+                       pa. question_id,
+                       pa. is_correct
+                FROM players p
+                JOIN player_answers pa
+                ON p.player_id = pa.player_id
+                WHERE p_player_id = p.player_id
+                ORDER BY pa.question_id;
+    end
+    $$;
 
 -- drop function most_least_answered_questions;
 --
@@ -411,3 +490,11 @@ ALTER SEQUENCE players_player_id_seq RESTART WITH 1;
 -- drop procedure add_answer_to_player_answers
 --f
 -- CREATE OR REPLACE PROCEDURE add_answer_to_player_answers()
+
+drop table trivia_statistics;
+CREATE TABLE trivia_statistics (
+    age_group VARCHAR(10),
+    correct_answers INT DEFAULT 0,
+    incorrect_answers INT DEFAULT 0
+);
+select * from trivia_statistics

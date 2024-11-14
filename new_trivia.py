@@ -37,8 +37,6 @@ from random import sample
 
 
 
-#from w import age_group
-
 connection = psycopg2.connect(
         host="localhost",
         database="postgres",
@@ -47,38 +45,12 @@ connection = psycopg2.connect(
         port="5432"
     )
 pg_cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-# Connect to MongoDB
-# mongo_client = MongoClient('mongodb://localhost:27017/')
-# mongo_db = mongo_client["Trivia_MongoDB"]
-# questions_collection = mongo_db['questions']
 client = MongoClient("mongodb://localhost:27017/")
 mongo_db = client["Trivia_MongoDB"]
 questions_collection = mongo_db["questions"]
 player_questions_collection = mongo_db['player_questions']
 
-
-
-
-
-
-# sample_questions = questions_collection.find().limit(5)
-# for question in sample_questions:
-#     print(question)
-# print(questions_collection.find_one({"Question_No": 496}))
-# pg_cursor.execute("SELECT question_id FROM most_least_answered_questions() LIMIT 10;")
-# results = pg_cursor.fetchall()
-# for row in results:
-#     print(row['question_id'])
-
-#
-# sample_questions = questions_collection.find().limit(5)
-# for question in sample_questions:
-#     print(question)
-
 colors = [
-
-
         "\033[91m",  # Red
         "\033[92m",  # Green
         "\033[33m",  # Yellow
@@ -87,8 +59,6 @@ colors = [
         "\033[96m",  # Cyan
     ]
 reset = "\033[0m"  # Reset color to default
-
-# Procedure to insert a new player
 
 def insert_new_player(username, password, email, age):
     """Inserting a record for a new player in the PostgreSQL database upon registering"""
@@ -124,17 +94,6 @@ def insert_new_player(username, password, email, age):
                 print("An unexpected error occurred", e)
                 return None
 
-
-
-# def fetch_random_questions(age, selected_topics):
-#     age_group = get_age_group(age)
-#     questions = list(questions_collection.find({"Age_Group": age_group, "Topic": {"$in": selected_topics}}))
-#
-#     print("Fetched Questions:", questions)  # Debugging print to check fetched questions
-#
-#     return sample(questions, min(len(questions), 20))
-
-
 def create_player_questions_set(player_id, age_group, selected_topics):
     """Creates a unique set of 20 random questions for a player's quiz according to their age and selected topics."""
 
@@ -164,59 +123,6 @@ def create_player_questions_set(player_id, age_group, selected_topics):
     player_questions_collection.insert_many(questions_for_session)
     print(f"20 questions for player_id {player_id} added to 'player_questions' collection.")
 
-
-
-#THIS IS THE ORIGINAL!!!!!
-# def fetch_random_questions(age, selected_topics):
-#     age_group = get_age_group(age)
-#     questions = list(questions_collection.find({"Age_Group": age_group, "topic": {"$in": selected_topics}}))
-#
-#     print("Fetched Questions:")
-#     for q in questions:
-#         print(q)
-#
-#     return sample(questions, min(len(questions), 20))
-
-
-# Fetch and store 20 questions for a player in MongoDB
-# THIS IS THE RIGHT ONE!!!!
-     # age_group = get_age_group(age)
-     # questions = list(questions_collection.find({"age_group":age_group,"topic":{"$in":selected_topics}}))
-     # return sample(questions, min(len(questions),20))
-
-
-
-
-
-
-
-#     try:
-#         # Clear any existing questions for the player
-#         mongo_collection.delete_many({"player_id": player_id})
-#         # Call the new PostgreSQL function to fetch 20 random questions
-#         pg_cursor.execute("SELECT * FROM get_random_questions();")
-#         questions = pg_cursor.fetchall()
-#
-#         # Store questions in MongoDB
-#         questions_to_store = [
-#             {
-#                 "player_id": player_id,
-#                 "question_id": question['question_id'],
-#                 "question_text": question['question_text'],
-#                 "answer_a": question['answer_a'],
-#                 "answer_b": question['answer_b'],
-#                 "answer_c": question['answer_c'],
-#                 "answer_d": question['answer_d'],
-#                 "correct_answer": question['correct_answer'],
-#             }
-#             for question in questions
-#         ]
-#         mongo_collection.insert_many(questions_to_store)
-#         print(f"Questions stored in MongoDB for player_id: {player_id}")
-#     except Exception as e:
-#         print("An error occurred while fetching and storing questions:", e)
-
-
 def verify_player (username,password):
     """Verify if a returning player exists in PostgreSQL with an unfinished game."""
     try:
@@ -229,6 +135,8 @@ def verify_player (username,password):
             questions_answered = pg_cursor.fetchone()[0]
             unfinished_game = questions_answered < 20
             return player_id, unfinished_game
+        else:
+            return None, False
     except Exception as e:
         print("Error verifying player:", e)
         return None, False
@@ -236,9 +144,6 @@ def verify_player (username,password):
 def fetch_remaining_questions(player_id):
     """Fetch the remaining questions for a returning player from player_questions_collection."""
     return list(player_questions_collection.find({"player_id": player_id, "is_answered": False}))
-
-
-#That's ChatGPT's! the lines
 
 def update_player_answer(player_id, question_no, selected_answer):
     """Checks the answer in player_questions_collection and sends the result to PostgreSQL."""
@@ -262,21 +167,6 @@ def update_player_answer(player_id, question_no, selected_answer):
     except Exception as e:
         print(f"An error occurred while updating player answers: {e}")
         connection.rollback()
-
-
-# THAT'S THE ORIGINAL!!!!!
-# def update_player_answer (player_id,question_id,selected_answer):
-#     """Checks the answer in MongoDB and sends the data to PostgreSQL"""
-#     question = questions_collection.find_one({"question_id":question_id})
-#     correct_answer = question['Correct_Answer']
-#     is_correct = (selected_answer == correct_answer)
-#     try:
-#         query = "CALL update_player_answers (%s,%s,%s,%s)"
-#         pg_cursor.execute(query,(player_id,question_id,selected_answer,is_correct))
-#         connection.commit()
-#     except Exception as e:
-#         print(f"An Error occurred while updating player answers: {e}")
-#         connection.rollback()
 
 def choose_topics(age):
     """Lets the user choose 3 topics to be asked about, according to his age"""
@@ -336,9 +226,6 @@ def start_quiz(player_id):
         if not question:
             print("You've answered all the questions! Well done!")
             complete_game(player_id)
-            #query = "CALL update_high_score_table_finish_time(%s);"
-            #pg_cursor.execute(query, (player_id,))
-            #connection.commit()
             sleep(2)
             return main_menu()
         question_counter += 1
@@ -359,16 +246,6 @@ def start_quiz(player_id):
 
         if not selected_answer == 'q':
             update_player_answer(player_id, question_id, selected_answer)
-
-            # Delete the question in MongoDB
-            # delete = questions_collection.delete_one({"Question_No": question_id})
-            # print(f"Attempting to delete question with Question_No {question_id}") #### to be deleted later?
-
-            # if delete.deleted_count == 1:
-            #     print(f"Question with Question_No {question_id} deleted successfully.")
-            # else:
-            #     print(f"Failed to delete question with Question_No {question_id}.")
-
             if selected_answer == question['Correct_Answer']:
                 print("Correct Answer!")
             else:
@@ -378,74 +255,7 @@ def start_quiz(player_id):
 
     print("You've answered all the questions! Well done!")
     complete_game(player_id)
-    #query = "CALL update_high_score_table_finish_time(%s);"
-    #pg_cursor.execute(query, (player_id,))
-    #connection.commit()
     return main_menu()
-
-    # Proceed with the quiz logic here
-
-# def start_quiz(player_id, questions):
-#     print("Starting quiz with questions:", questions)  # Debugging line
-#     if not questions:
-#         print("No questions found for the selected age group and topics.")
-#         return main_menu()
-#     # Rest of your start_quiz logic
-
-#THATS THE ORIGINAL!!!!!!
-# def start_quiz(player_id, questions):
-#     """Starts the quiz for a player and deletes each question after it's answered"""
-#     for i, color in zip(range(5), itertools.cycle(colors)):
-#         text = f"{color}GET READY, STARTING THE QUIZ!{reset}"
-#         print(f"\r{' '}\r{text.center(140)}", end="", flush=True)
-#         time.sleep(2)
-#     while True:
-#         question = questions.pop(0)
-#         question_id = question['question_id']
-#
-#         if not question:
-#             print("You've answered all the questions! Well done!")
-#             query = "CALL update_high_score_table_finish_time(%s);"
-#             pg_cursor.execute(query, (player_id,))
-#             connection.commit()
-#             return main_menu()
-#         else:
-#             for question in questions:
-#                 print("\n")
-#                 print(f"{' ':<50}{question['question_text']}\033[0m\n")  # Reset color to white for the question text
-#                 sleep(2)
-#                 print(f"\033[95m{' ':<40}{'a.'}{question['answer_a']:<40}\033[0m", end='')  # Answer a starts after 40 spaces
-#                 sleep(1)
-#                 print(f"\033[92m{' b.' + question['answer_b']}\033[0m\n")  # Answer b starts after 60 spaces
-#                 sleep(1)
-#                 print(f"\033[93m{' ':<40}{'c.'} {question['answer_c']:<40}\033[0m", end='')  # Answer c starts after 40 spaces
-#                 sleep(1)
-#                 print(f"\033[94m{'d.' + question['answer_d']}\033[0m\n")
-#                 (sleep(1))
-#                 selected_answer = check_to_quit(input(
-#                     f"Please enter your answer:\nIs it \033[95m(a)\033[0m, \033[92m(b)\033[0m, \033[93m(c)\033[0m, or \033[94m(d)\033[0m? \n\033[96mRemember you can hit [Q] at any time to quit!\033[0m\n").lower(), player_id)
-#                 if not selected_answer == 'q':
-#                     update_player_answer(player_id, question_id, selected_answer)
-#                     delete = questions_collection.delete_one({"_id": question['_id']})
-#                     # Call this function after each answer is processed and the question is deleted
-#                     print_remaining_questions(player_id)
-#
-#                     if delete.deleted_count == 1:
-#                         print(f"Question {question['_id']} deleted successfully.")
-#                     else:
-#                         print(f"Failed to delete question {question['_id']}.")
-#
-#                     if selected_answer == question['correct_answer']:
-#                         print("Correct Answer!")
-#                     else:
-#                         print(f"Wrong Answer... Too Bad...\nThe Correct Answer was: {question['correct_answer']}.")
-#                 else:
-#                     break
-#             print("You've answered all the questions! Well done!")
-#             query = "CALL update_high_score_table_finish_time(%s);"
-#             pg_cursor.execute(query,(player_id,))
-#             connection.commit()
-#             return main_menu()
 
 def update_starting_time (player_id):
     """Updates the quiz's starting time at the high_scores table"""
@@ -453,63 +263,6 @@ def update_starting_time (player_id):
     pg_cursor.execute(query,(player_id,))
     connection.commit()
 
-
-
-
-    # Check and process new entries from new_player_log
-    # while True:
-    #     pg_cursor.execute("SELECT * FROM new_player_log;")
-    #     new_entries = pg_cursor.fetchall()
-    #
-    #     for entry in new_entries:
-    #         player_id = entry['player_id']
-    #         fetch_and_store_questions(player_id, pg_cursor, player_questions_collection)
-    #         pg_cursor.execute("DELETE FROM new_player_log WHERE player_id = %s;", (player_id,))
-    #         connection.commit()
-
-
-# finally:
-#     # Close PostgreSQL connection
-#     if pg_cursor:
-#         pg_cursor.close()
-#     if connection:
-#         connection.close()
-#     print("t")
-#     # Fetch and print all documents in MongoDB collection
-#     questions = player_questions_collection.find()
-#     for question in questions:
-#         print(question)
-#
-#     # Close MongoDB connection
-#     if mongo_client:
-#         mongo_client.close()
-
-
-
-# Function to check a password
-# def check_password(username, password,email,age):
-#     # Retrieve the hashed password from the database
-#     pg_cursor.execute("SELECT hashed_password FROM users WHERE username = %s", (username,))
-#     result = pg_cursor.fetchone()
-#
-#     if result:
-#         hashed_password_from_db = result[0]dont forget it worked before, only that i found out the correct answers
-#         # Compare the provided password with the stored hash
-#         if bcrypt.checkpw(password.encode(), hashed_password_from_db.encode()):
-#             print("Password is correct!")
-#         else:
-#             print("Incorrect password!")
-#     else:
-#         print("Username not found.")
-#
-#
-# # Example usage
-#   # Creating a new user
-# check_password('user1', 'my_password1')  # Verifying the password
-#
-# # Close connection
-# pg_cursor.close()
-# connection.close()
 def print_statistics_table(results):
     """Shows a general statistics table"""
     headers = ["Player ID", "Username", "Questions Solved", "Started At", "Finished At", "Total Game Time", "Score"]
@@ -527,8 +280,6 @@ def print_statistics_table(results):
     print(f"\n\n")
     sleep(2)
     main_menu()
-
-
 
 def print_past_players_table(results):
     """Prints a table showing all past players."""
@@ -557,12 +308,6 @@ def print_past_players_table(results):
     print("\n\n")
     sleep(2)
     main_menu()
-
-
-
-
-#THIS WAS GIVEN BY CHATGPT!
-
 
 def print_questions_statistics_table():
     """Retrieves data from PostgreSQL and MongoDB, printing tables for most and least answered questions with colors by age group."""
@@ -614,127 +359,81 @@ def print_questions_statistics_table():
     print("\n")  # Final newline for spacing
     sleep(2)
     main_menu()
+def answered_correctly_count_list():
+    """Retrieves data from Postgres and MongoDB and presents a table of correct answers answered by all users, from most to least"""
+    pg_cursor.execute("SELECT * FROM players_list_by_correct_answers();")
+    connection.commit()
+    results = pg_cursor.fetchall()
 
+    headers = ["Player ID", "Player Name", "Total Correct Answers"]
+    column_widths = [20, 20, 6]
+    headers_row = "| " + " |".join(f"{headers:^{column_widths[0]}}" for i, headers in enumerate(headers)) + "|"
+    separators = "|" + " |".join("-" * (width + 2) for width in column_widths) + "|"
+    print(f"\n\n\033[92mCorrectly Answered Questions By Players: \n\n\033[0m")
+    print(headers_row)
+    print(separators)
 
+    for row in results:
+        player_id, player_name, total_correct_answers = row[:3]
+        print(
+            f"| {player_id:^{column_widths[0]}}  | {player_name:^{column_widths[1]}} |  {total_correct_answers:^{column_widths[2]}} | ")
+    sleep(2)
+    main_menu()
+def user_answers(player_id):
+    """Retrieves data from Postgres and MongoDB and presents a full list of questions answered by the player"""
+    pg_cursor.execute("SELECT * FROM show_questions_for_player(%s);",(player_id,))
+    connection.commit()
+    results = pg_cursor.fetchall()
 
-#### 1-5 and their data in green, ages 5-10 and their data in blue, ages 10-15 and their data in purple, ages 15-20 and their data in yellow, ages 20-30 and their data in orenge, ages 30-40 and their data in red and ages 40-100 and their data in pink.
+    headers = ["Player ID", "Player Name", "Question ID", "Question Text", "Answered Correctly"]
+    column_widths = [6, 20, 6, 120, 15]
+    headers_row = "| " + "|".join(f"{headers:^{column_widths[0]}}" for i, headers in enumerate(headers)) + "|"
+    separators = "| " + "|".join("-" * (width + 2) for width in column_widths) + "|"
+    print(f"\n\n\033[92mQuestions Answered By Player {player_id}: \n\n\033[0m")
+    print(headers_row)
+    print(separators)
 
+    for row in results:
+        player_id, player_name, question_id, correct= row[:4]
+        question_doc = questions_collection.find_one({"Question_No": question_id})
+        question_text = question_doc.get("Question_Text", "N/A")
+        correct = 'Correct' if correct else 'Incorrect'
+        print(f"| {player_id:^{column_widths[0]}}  | {player_name:^{column_widths[1]}} | {question_id:^{column_widths[2]}}| {question_text:<{column_widths[3]}} | {correct:^{column_widths[4]}} | ")
+    sleep(2)
+    main_menu()
 
-#THIS IS THE ORIGINAL!!!!
-# def print_questions_statistics_table():
-#     """Retrieves data from postgres and MongoDB and prints a table of most and least answered questions."""
-#     # Fetch data from PostgreSQL for most/least answered questions
-#     pg_cursor.execute("SELECT * FROM most_least_answered_questions()")
-#     results = pg_cursor.fetchall()
-#     print(results)
-#     most_answered_list = list(questions_collection.aggregate([
-#         {"$match": {
-#             "question_text": {"$ne": None},
-#             "Question_No": {"$ne": None}
-#         }},
-#         {"$group": {
-#             "_id": {"age_group": "$Age_Group", "topic": "$Topic"},
-#             "question": {"$first": "$Question_Text"},
-#             "question_id": {"$first": "$Question_No"},
-#             "total_answered_times": {"$max": "$answered_count"}
-#         }},
-#         {"$sort": {"total_answered_times": -1}}
-#     ]))
-#
-#     least_answered_list = list(questions_collection.aggregate([
-#         {"$match": {
-#             "question_text": {"$ne": None},
-#             "Question_No": {"$ne": None}
-#         }},
-#         {"$group": {
-#             "_id": {"age_group": "$Age_Group", "topic": "$Topic"},
-#             "question": {"$first": "$Question_Text"},
-#             "question_id": {"$first": "$Question_No"},
-#             "total_answered_times": {"$min": "$answered_count"}
-#         }},
-#         {"$sort": {"total_answered_times": 1}}
-#     ]))
-#     headers_most_answered = ["Age Group", "Topic", "Question ID", "Question Text", "Username", "Player's Age", "Date Answered", "Total Answered Times"]
-#     print("\nMost answered questions:")
-#     print(f"\n\n| {' | '.join(f'{header:^20}' for header in headers_most_answered)} | ")
-#     print("|" + "|".join("-" * 22 for _ in headers_most_answered) + "|")
-#     for doc in most_answered_list:
-#         age_group = doc["_id"]["age_group"]
-#         topic = doc["_id"]["topic"]
-#         question_id = results[0]
-#         question = doc["question"]
-#         username = doc["username"]
-#         player_age = doc["age"]
-#
-#         total_answered_times = results[1]
-#         total_correct_times = results[2]
-#         total_incorrect_times = results[3]
-#
-#         print(f"| {age_group:^20} | {topic ^ 20} | {question_id:^20} | {question_text} | {username} | {player_age} | {date_answered} | {total_answered_times:^20}")
-#
-#     headers_least_answered = ["Age Group", "Topic", "Question ID", "Question Text", "Username", "Player's Age", "Date Answered", "Total Answered Times"]
-#     print("\nLeast answered questions:")
-#     print(f"\n\n| {' | '.join(f'{header:^20}' for header in headers_least_answered)} | ")
-#     print("|" + "|".join("-" * 22 for _ in headers_least_answered) + "|")
-#     for doc in least_answered_list:
-#         age_group = doc["_id"]["age_group"]
-#         topic = doc["_id"]["topic"]
-#         question = doc["question"]
-#         question_id = results[0]
-#         total_answered_times = results[1]
-#         total_correct_times = results[2]
-#         total_incorrect_times = results[3]
-#
-#         print(f"| {age_group:^20} | {topic ^ 20} | {question_id:^20} | {question_text} | {username} | {player_age} | {date_answered} | {total_answered_times:^20}")
-#     sleep(2)
-#     main_menu()
+def user_correct_answers(player_id):
+    """Retrieves data from Postgres and MongoDB and presents a table of correct answers given by the player"""
+    pg_cursor.execute("SELECT * from players_list_by_correct_answers(%s);",(player_id,))
+    connection.commit()
+    results = pg_cursor.fetchall()
 
+    headers = ["Player ID", "Player Name", "Question ID", "Question Text", "Total Correct Answers"]
+    column_widths = [6, 30, 6, 120, 8, 10, 8]
+    headers_row = "| " + "|".join(f"{headers:^{column_widths[0]}}" for i,headers in enumerate(headers)) + "|"
+    separators = "| " +"|".join("-"* (width+2) for width in column_widths) + "|"
+    print(f"\n\n\033[92mCorrect Answers By Player {player_id}: \n\n\033[0m")
+    print(headers_row)
+    print(separators)
 
+    for row in results:
+        player_id, player_name, question_id, total_correct_answers = row[:4]
+        question_doc = questions_collection.find_one({"Question_No":question_id})
+        question_text = question_doc.get("Question_Text","N/A")
+        print(f"| {player_id:^{column_widths[0]}}  | {player_name:^{column_widths[1]}} | {question_id:^{column_widths[2]}}| {question_text:<^>{column_widths[3]}} | {total_correct_answers:^{column_widths[4]}} | ")
+    sleep(2)
+    main_menu()
 
-
-
-    # most_answered_list = list(most_answered_questions)
-    # least_answered_list = list(least_answered_questions)
-
-
-
-    #
-    # print("\nLeast Answered Questions:")
-    # for doc in least_answered_list:
-    #     print(doc)
-
-
-
-
-
-
-    # for row in headers_most_answered:
-    #     registration_date = f"{row['registration_date']:%Y-%m-%d}" if row['registration_date'] else "N/A"
-    #     print(f"| {row['player_id']:^20} | {row['username']:^20} | {row['age']:^20} | "
-    #           f"{row['email']:^20} | {registration_date:^20} | {row['total_players']:^20} |")
-    # print(f"\n\n")
-
-
-
-
-
-
-    # for row in headers_least_answered:
-    #     registration_date = f"{row['registration_date']:%Y-%m-%d}" if row['registration_date'] else "N/A"
-    #     print(f"| {row['player_id']:^20} | {row['username']:^20} | {row['age']:^20} | "
-    #           f"{row['email']:^20} | {registration_date:^20} | {row['total_players']:^20} |")
-    # print(f"\n\n")
 
 
 def get_user_statistics(player_id):
     """Retrieves and shows the user's personal statistics from all games in the 'high_score' table"""
-    pg_cursor.execute("SELECT * FROM show_user_statistics(%s);", (player_id,))
+    pg_cursor.execute("CALL * FROM show_user_statistics(%s);", (player_id,))
     connection.commit()
     results = pg_cursor.fetchall()
     print_statistics_table(results)
     sleep(5)
     return main_menu()
-
 
 
 def get_user_best_score(player_id):
@@ -748,10 +447,6 @@ def get_user_best_score(player_id):
         print("No best score found for this player.")
     sleep(5)
     return main_menu()
-
-
-
-
 
 def show_high_score_table():
     """Shows the 'high_score' table"""
@@ -772,13 +467,6 @@ def past_players():
 
     sleep(5)
     return main_menu()
-
-# def questions_statistics():
-#     """Retrieves data from postgres and sends it to be printed as a table of most and least answered questions"""
-#     # pg_cursor.execute("SELECT * FROM questions_statistics();")
-#     # connection.commit()
-#     # results = pg_cursor.fetchall()
-#     print_questions_statistics_table()
 
 def check_to_quit(user_input, player_id = None):
     if user_input == 'q':
@@ -867,9 +555,17 @@ def main_menu():
             player_id, unfinished_game = verify_player(username,password)
             if player_id:
                 print(f"Welcome back, {username}!")
-                if unfinished_game:
-                    questions = fetch_remaining_questions(player_id)
+                new_or_continue = input(f"Would you like to:\n1. Start a New Game [Press 1 or N]\n2. Continue an Existing Game [Press 2 or C]")
+                if new_or_continue == '1' or new_or_continue== 'n'.lower():
                     start_quiz(player_id)
+                elif new_or_continue == '2' or new_or_continue == 'c'.lower():
+                    if unfinished_game:
+                        #questions = fetch_remaining_questions(player_id)  SEE IF THIS LINE IS NEEDED! ######################################################
+                        start_quiz(player_id)
+                    else:
+                        print("No unfinished quiz found for this player")
+                        sleep(2)
+                        main_menu()
                 else:
                     complete_game(player_id)
                     print("It looks like you've completed the quiz. Bravo!")
@@ -877,9 +573,12 @@ def main_menu():
                     main_menu()
             else:
                 print("Invalid login or finished game. Please try again")
+                sleep(2)
+                main_menu()
         case 's' | '3':
             user_input = input(f"Would you like to:\n1. See Your overall Statistics\n2. See Your best performance yet\
-            \n3. See all time best scores\n4. See number of players so far\n5. See details for most and least answered questions\n10. Quit ")
+            \n3. Get a full list of questions a player has been asked\n4. See a list of correct answers given by a user (by user id)\
+            \n5. Check for all time correct answers\n6. See all time best scores\n7. See number of players so far\n8. See details for most and least answered questions\n9. Quit ")
             if user_input == '1':
                 username = check_to_quit(input("Please enter a username: \n"))
                 password = check_to_quit(input("Please enter a password: \n"))
@@ -891,12 +590,28 @@ def main_menu():
                 player_id = verify_player(username, password)
                 get_user_best_score(player_id[0])
             elif user_input == '3':
-                show_high_score_table()
-            elif user_input == '4':
-                past_players()
+                player_id = input("Please enter player id")
+                if player_id:
+                    user_answers(player_id)
+                else:
+                    print("No player found with the provided ID")
+                    main_menu()
+            elif user_input =='4':
+                player_id = input("Please enter player id")
+                if player_id:
+                    user_correct_answers(player_id)
+                else:
+                    print("No player found with the provided ID")
+                    main_menu()
             elif user_input == '5':
+                answered_correctly_count_list()
+            elif user_input == '6':
+                show_high_score_table()
+            elif user_input == '7':
+                past_players()
+            elif user_input == '8':
                 print_questions_statistics_table()
-            elif user_input == '10' or user_input == 'q':
+            elif user_input == '9' or user_input == 'q':
                 user_input= 'q'
                 check_to_quit(user_input)
         case 'q' | '4':
@@ -904,18 +619,39 @@ def main_menu():
             exit()
 
 
-# def print_remaining_questions(player_id):
-#     """Prints remaining questions for a player's current game session from player_questions_collection."""
-#     remaining_questions = player_questions_collection.find({"player_id": player_id})
-#     print("\nRemaining questions:")
-#     for question in remaining_questions:
-#         print(f"Question: {question['Question_Text']}, Correct Answer: {question['Correct_Answer']}")
+#
+#
+# def generate_topic_column_chart(questions_collection):
+#     """Generates a column chart showing the percentage of players choosing each topic."""
+#     # Aggregate to get the count of players choosing each topic in MongoDB
+#     pipeline = [
+#         {"$group": {"_id": "$Topic", "choice_count": {"$sum": 1}}},
+#         {"$sort": {"choice_count": -1}}
+#     ]
+#     results = list(questions_collection.aggregate(pipeline))
+#
+#     topics = [res["_id"] for res in results]
+#     choice_counts = [res["choice_count"] for res in results]
+#     total_choices = sum(choice_counts)
+#     percentages = [(count / total_choices) * 100 for count in choice_counts]
+#
+#     fig, ax = plt.subplots()
+#     ax.bar(topics, percentages, color='skyblue')
+#     ax.set_xlabel("Topics")
+#     ax.set_ylabel("Percentage of Players (%)")
+#     ax.set_title("Percentage of Players Choosing Each Topic")
+#     plt.xticks(rotation=45, ha='right')  # Rotate topic labels for readability
+#     plt.tight_layout()
+#     plt.show()
+#
+# # Generate pie charts for each age group based on PostgreSQL data.
+# generate_age_group_charts(pg_cursor, questions_collection)
 
+# Generate a column chart for topics based on MongoDB data.
+# generate_topic_column_chart(questions_collection)
 
-
-
-
-
+# Comment out main_menu() for now to prevent it from overriding chart displays
+# main_menu()
 
 main_menu()
 

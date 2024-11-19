@@ -259,8 +259,55 @@ CREATE OR REPLACE FUNCTION show_user_statistics(
     end;
     $$;
 
+drop function mid_game_statistics;
+
+CREATE OR REPLACE FUNCTION mid_game_statistics(
+    IN p_player_id INTEGER)
+RETURNS TABLE (
+    player_id INTEGER,
+    username VARCHAR,
+    answered_questions INTEGER,
+    correct_answers INTEGER,
+    question_id INTEGER,
+    selected_answer CHAR(1),
+    is_correct BOOLEAN,
+    elapsed_time INTERVAL,
+    score INTEGER
+)
+LANGUAGE plpgsql AS
+$$
+BEGIN
+    RETURN QUERY
+        SELECT p.player_id,
+               p.username,
+               (SELECT COUNT(*)::INTEGER
+                FROM player_answers pa
+                WHERE pa.player_id = p.player_id) AS answered_questions,
+               (SELECT COUNT(*)::INTEGER
+                FROM player_answers pa
+                WHERE pa.player_id = p_player_id AND pa.is_correct = TRUE) AS correct_answers,
+               pa.question_id::INTEGER, -- Ensure question_id is explicitly cast to INTEGER
+               pa.selected_answer,
+               pa.is_correct,
+               (CASE
+                   WHEN hs.started_at IS NOT NULL THEN (NOW() - hs.started_at)::INTERVAL
+                   ELSE NULL
+                END) AS elapsed_time,
+               hs.score
+        FROM players p
+        LEFT JOIN player_answers pa ON p.player_id = pa.player_id
+        LEFT JOIN high_scores hs ON p.player_id = hs.player_id
+        WHERE p.player_id = p_player_id AND hs.finished_at IS NULL;
+END;
+$$;
+
+
 
 drop function show_user_best_score;
+SELECT * FROM show_user_statistics(80);
+
+
+select * from players;
 
 CREATE OR REPLACE FUNCTION show_user_best_score(
     IN p_player_id INTEGER
@@ -400,7 +447,6 @@ language plpgsql AS
         end;
             $$;
 
-
 drop function players_list_by_correct_answers;
 
 CREATE OR REPLACE FUNCTION players_list_by_correct_answers()
@@ -425,7 +471,7 @@ language plpgsql AS
             ORDER BY total_correct_answers DESC;
         end;
             $$;
-
+select * from players_list_by_correct_answers(80);
 drop function show_questions_for_player;
 
 CREATE OR REPLACE FUNCTION show_questions_for_player(
@@ -452,6 +498,16 @@ language plpgsql AS
     end
     $$;
 
+CREATE VIEW correct_players AS
+    SELECT * FROM players_list_by_correct_answers();
+
+CREATE VIEW most_answered_questions AS
+    SELECT * FROM most_least_answered_questions();
+
+CREATE VIEW past_players AS
+    SELECT * FROM past_players_list();
+
+SELECT * FROM players
 -- drop function most_least_answered_questions;
 --
 -- CREATE OR REPLACE FUNCTION most_least_answered_questions()

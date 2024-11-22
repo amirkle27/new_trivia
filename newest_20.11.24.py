@@ -175,7 +175,7 @@ def format_results(results, keys, default="N/A"):
 def present_statistics_menu():
     """Presents the statistics menu"""
     user_input = input(f"Would you like to:\n1. See Your overall Statistics\n2. See Your best performance yet\
-                \n3. See a player's last game's statistics\n4. Get a full list of questions a player has been asked\n5. See a list of correct answers given by a user (by user id)\
+                \n3. See a player's last game's statistics\n4. Get a full list of questions a player has been asked\n5. See a list of correct answers given by a user\
                 \n6. Check for all time correct answers\n7. See all time best scores\n8. See number of players so far\n9. See details for most and least answered questions\n10. Quit ")
     if user_input == '1':
         username = check_to_quit(input("Please enter a username: \n"))
@@ -249,15 +249,18 @@ def insert_new_player(username, password, email, age):
             error_message = str(e)
 
             print(f"An error occurred: {error_message}")
-            if 'username' in error_message:
-                username = input("This username already exists. Please enter a new one:")
-            elif 'password' in error_message:
-                password = input("This password already exists. Please enter a new one:")
-            elif 'email' in error_message:
-                email = input("This email already exists. Please enter a new one:")
-            else:
-                print("An unexpected error occurred", e)
-                return None
+            while True:
+                if 'username' in error_message:
+                    new_username = input("This username already exists. Please enter a new one:")
+                    if new_username != username:
+                        return new_username
+                elif 'password' in error_message:
+                    password = input("This password already exists. Please enter a new one:")
+                elif 'email' in error_message:
+                    email = input("This email already exists. Please enter a new one:")
+                else:
+                    print("An unexpected error occurred", e)
+                    return None
 
 def create_player_questions_set(player_id, age_group, selected_topics):
     """Creates a unique set of 20 random questions for a player's quiz according to their age and selected topics."""
@@ -302,7 +305,7 @@ def verify_player (username,password):
             unfinished_game = remaining_questions > 0
             return player_id,unfinished_game,age
         else:
-            return None,False,None
+            print("An error occurred. Seems that no such player exists. Please try again")
     except Exception as e:
         print("Error verifying player:", e)
         return None, False, None
@@ -392,13 +395,12 @@ def question_structure(question_counter,question):
     sleep(1)
 
 def start_quiz(player_id, player_age):
-    """Starts the quiz using questions from the player's questions set in player_questions_collection"""
+    """Starts the quiz using questions from the player's questions set."""
     questions = fetch_remaining_questions(player_id)
     if not questions:
-        print("No unfinished quiz found for this player. Starting a new game:")
+        print("No remaining questions found for this player. Starting a new game.")
         topics = choose_topics(player_age)
         create_player_questions_set(player_id, get_age_group(player_age), topics)
-        update_starting_time(player_id)
         questions = fetch_remaining_questions(player_id)
 
     # if not questions:
@@ -416,7 +418,7 @@ def start_quiz(player_id, player_age):
         question = questions.pop(0)  # Pop the first question from the list
         question_id = question.get('Question_No')  # Use 'Question_No' as the unique identifier
 
-        print(f"Current question ID: {question_id}")  # Debugging statement
+        print(f"\nCurrent question ID: {question_id}")  # Debugging statement
         question_structure(question_counter, question)
         valid_answers = ['a', 'b', 'c', 'd', 's', 'q']
         if not question:
@@ -777,13 +779,16 @@ def get_age_group(age):
         "30-40": range(30,40),
         "40-100": range(40,101)
     }
+
     for group, age_range in age_groups.items():
         if age in age_range:
             return group
+
     if not age in age_groups.items():
         print("No matching age groups for this age, please try again!")
         sleep(2)
         main_menu()
+
 
 
 
@@ -809,7 +814,7 @@ def complete_game(player_id,player_age):
             start_quiz(player_id, player_age)
             break
         elif new_or_quit in ('q','2'):
-            print("Returning to main menu")
+            print("\nReturning to main menu")
             (sleep(2))
             main_menu()
             break
@@ -842,39 +847,36 @@ def main_menu():
                         print("Username must contain characters!")
                         # username = check_to_quit(input("Please enter a username: \n"))
                         continue
-                    password = check_to_quit(input("Please enter a password: \n"))
-                    reenter_password = check_to_quit(input("Please re-enter your Password: \n"))
-
+                    while True:
+                        password = check_to_quit(input("Please enter a password: \n"))
+                        reenter_password = check_to_quit(input("Please re-enter your Password: \n"))
+                        if password != reenter_password:
+                            print("Passwords mismatched. Please try again.")
+                        else:
+                            break
                     email = check_to_quit(input("Please enter your E-mail address: \n"))
                     try:
-                        age= check_to_quit(int(input("Please enter your age: \n")))
+                        while True:
+                            age = check_to_quit(int(input("Please enter your age: \n")))
+                            if 0 < age <= 100:
+                                break
+                            else:
+                                print("Age must be between 1 and 100. Please try again.")
                     except Exception as e:
-                        print(f"An Error occurred with: '{e}'")
+                        print(f"An error occurred with: {e}. Age must be a number...")
                         sleep(2)
                         return main_menu()
-                    while password != reenter_password:
-                        print("Passwords mismatched. Please try again.")
-                        password = check_to_quit(input("Enter your password: \n"))
-                        reenter_password = check_to_quit(input("Re-enter your password: \n"))
-
-
-                    if password == reenter_password:
-                        player_id = insert_new_player(username, password, email, age)
-                        if player_id:
-                            print(f"Player {username} created successfully with ID:\n{player_id} ")
-                            selected_topics = choose_topics(age)
-                            create_player_questions_set(player_id,get_age_group(age),selected_topics)
-                            player_age = age
-                            start_quiz(player_id, player_age)
-                        else:
-                            print("Failed to create player. Please try again.")
-                            return main_menu()
+                    player_id = insert_new_player(username, password, email, age)
+                    if player_id:
+                        print(f"Player {username} created successfully with ID:\n{player_id} ")
+                        selected_topics = choose_topics(age)
+                        create_player_questions_set(player_id,get_age_group(age),selected_topics)
+                        player_age = age
+                        start_quiz(player_id, player_age)
                     else:
-                        print("Passwords do not match. Please try again.")
+                        print("Failed to create player. Please try again.")
                         sleep(2)
-                        main_menu()
-
-
+                        return main_menu()
             case 'e' | '2':
                 username = check_to_quit(input("Please enter a username: \n"))
                 password = check_to_quit(input("Please enter a password: \n"))
